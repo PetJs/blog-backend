@@ -7,6 +7,6 @@ type Post struct {
 	Title 		string 		`gorm:"size:255;not null"`
 	Content 	string 		`gorm:"type:text;not null"`
 	Author 		string 		`gorm:"size:100;not null "`
-	CreatedAt 	time.Time 	`gorm:"autoCreateTime"`
-	UpdatedAt 	time.Time 	`gorm:"autoUpdateTime"`
+	CreatedAt 	time.Time 	`gorm:"not null;default:CURRENT_TIMESTAMP"`
+	UpdatedAt 	time.Time 	`gorm:"not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 }

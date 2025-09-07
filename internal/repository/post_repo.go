@@ -1,38 +1,28 @@
 package repository
 
 import (
-	"database/sql"
+	"gorm.io/gorm"
 
 	"github.com/PetJs/blog-backend/internal/models"
 )
 
 type PostRepository struct {
-	DB *sql.DB
+	DB *gorm.DB
 }
 
-func NewPostRepository(db *sql.DB) *PostRepository{
+func NewPostRepository(db *gorm.DB) *PostRepository{
 	return &PostRepository{DB: db}
 }
 
 func (r *PostRepository) GetAllPosts() ([]models.Post, error){
-	rows, err := r.DB.Query("SELECT id, title, content, author, created_at, updated_at FROM posts")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 
 	var posts []models.Post
-	for rows.Next() {
-		var post models.Post
-		if err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Author, &post.CreatedAt, &post.UpdatedAt); err != nil {
-			return nil, err
-		}
-		posts = append(posts, post)
-	}
+	if err := r.DB.Order("created_at DESC").Find(&posts).Error; err != nil {
+        return nil, err
+    }
 	return posts, nil
 }
 
-func (r *PostRepository) CreatePost(post models.Post) error {
-	_, err := r.DB.Exec("INSERT INTO posts (title, content, author, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", post.Title, post.Content, post.Author, post.CreatedAt, post.UpdatedAt)
-	return err
+func (r *PostRepository) CreatePost(post *models.Post) error {
+	return r.DB.Create(post).Error
 }

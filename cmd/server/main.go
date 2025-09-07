@@ -19,7 +19,7 @@ func main(){
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
-	repo := repository.NewPostRepository(sqlDB)
+	repo := repository.NewPostRepository(db)
 	service := services.NewPostService(repo)
 
 

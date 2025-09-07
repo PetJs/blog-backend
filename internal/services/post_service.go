@@ -19,6 +19,9 @@ func (s *PostService) GetPosts() ([]models.Post, error){
 	return s.Repo.GetAllPosts()
 }
 
-func (s *PostService) CreatePost(post models.Post) error {
-	return s.Repo.CreatePost(post)
+func (s *PostService) CreatePost(post models.Post) (models.Post, error) {
+	if err := s.Repo.CreatePost(&post); err != nil {
+		return models.Post{}, err
+	}
+	return post, nil
 }

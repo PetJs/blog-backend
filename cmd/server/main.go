@@ -22,9 +22,13 @@ func main(){
 	repo := repository.NewPostRepository(db)
 	service := services.NewPostService(repo)
 
+	userRepo := repository.NewUserRepository(db)
+	userService := services.NewUserService(userRepo)
+
 
 	router := gin.Default()
 	api.RegisterPostRoutes(router, service)
+	api.RegisterUserRoutes(router, userService)
 
 	log.Println("Server running on port " + cfg.Port)
 

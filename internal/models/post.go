@@ -7,6 +7,7 @@ type Post struct {
 	Title 		string 		`gorm:"size:255;not null" json:"title"`
 	Content 	string 		`gorm:"type:text;not null" json:"content"`
 	Author 		string 		`gorm:"size:100;not null" json:"author"`
+	UserID      uint        `gorm:"not null" json:"user_id"`
 	CreatedAt 	*time.Time	`json:"created_at"`	
 	UpdatedAt 	*time.Time	`json:"updated_at"`	
 }

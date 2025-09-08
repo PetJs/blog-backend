@@ -25,3 +25,13 @@ func (s *PostService) CreatePost(post models.Post) (models.Post, error) {
 	}
 	return post, nil
 }
+
+func (s *PostService) DeletePost(postID string, userID uint) error {
+	return s.Repo.DeletePost(postID, userID)
+}
+
+
+func (s *PostService) GetUserPosts(userID uint) ([]models.Post, error) {
+	return s.Repo.GetPostByUser(userID)
+}
+

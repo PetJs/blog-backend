@@ -15,7 +15,7 @@ import (
 type CreatePostInput struct {
     Title   string `json:"title" binding:"required"`
     Content string `json:"content" binding:"required"`
-    Author  string `json:"author" binding:"required"`
+    ImageURL string `json:"image_url" binding:"required"`
 }
 
 
@@ -51,7 +51,7 @@ func RegisterPostRoutes(router *gin.Engine, service *services.PostService){
 		post := models.Post{
 			Title:   input.Title,
 			Content: input.Content,	
-			Author: input.Author,
+			ImageURL: input.ImageURL,
 			UserID:  user_id.(uint), 
 		}
 

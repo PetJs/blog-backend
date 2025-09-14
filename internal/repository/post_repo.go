@@ -17,14 +17,23 @@ func NewPostRepository(db *gorm.DB) *PostRepository{
 func (r *PostRepository) GetAllPosts() ([]models.Post, error){
 
 	var posts []models.Post
-	if err := r.DB.Order("created_at DESC").Find(&posts).Error; err != nil {
+	if err := r.DB.Preload("User").Order("created_at DESC").Find(&posts).Error; err != nil {
         return nil, err
     }
 	return posts, nil
 }
 
-func (r *PostRepository) CreatePost(post *models.Post) error {
-	return r.DB.Create(post).Error
+func (r *PostRepository) CreatePost(post *models.Post) (*models.Post, error) {
+	if err := r.DB.Create(post).Error; err != nil {
+        return nil, err
+    }
+
+    // Reload post with user info
+    if err := r.DB.Preload("User").First(post, post.ID).Error; err != nil {
+        return nil, err
+    }
+
+    return post, nil
 }
 
 func (r *PostRepository) DeletePost(postID string, userID uint) error {
@@ -46,7 +55,7 @@ func (r *PostRepository) DeletePost(postID string, userID uint) error {
 func (r *PostRepository) GetPostByUser(userID uint) ([]models.Post, error){
 	var posts []models.Post
 
-	if err := r.DB.Where("user_id = ?", userID).Order("created_at DESC").Find(&posts).Error; err != nil {
+	if err := r.DB.Preload("User").Where("user_id = ?", userID).Order("created_at DESC").Find(&posts).Error; err != nil {
 		return nil, err
 	}
 	return posts, nil

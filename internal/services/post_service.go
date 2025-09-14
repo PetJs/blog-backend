@@ -20,10 +20,11 @@ func (s *PostService) GetPosts() ([]models.Post, error){
 }
 
 func (s *PostService) CreatePost(post models.Post) (models.Post, error) {
-	if err := s.Repo.CreatePost(&post); err != nil {
-		return models.Post{}, err
-	}
-	return post, nil
+	savedPost, err := s.Repo.CreatePost(&post)
+    if err != nil {
+        return models.Post{}, err
+    }
+    return *savedPost, nil
 }
 
 func (s *PostService) DeletePost(postID string, userID uint) error {

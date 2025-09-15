@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"log"
+	"os"
 	"time"
 
 	"github.com/PetJs/blog-backend/internal/api"
@@ -17,16 +17,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func main(){
+func main() {
 
 	err := godotenv.Load()
-    if err != nil {
-        log.Println("⚠️ No .env file found, relying on environment variables")
-    }
+	if err != nil {
+		log.Println("⚠️ No .env file found, relying on environment variables")
+	}
 
 	cfg := config.LoadConfig()
-	
-	
+
 	db := database.ConnectDB()
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
@@ -37,10 +36,9 @@ func main(){
 	userRepo := repository.NewUserRepository(db)
 	userService := services.NewUserService(userRepo)
 
-
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:  	  []string{"*"},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -54,7 +52,7 @@ func main(){
 	if port == "" {
 		port = cfg.Port // fallback for local dev
 	}
-	log.Println("Server running on port " + cfg.Port)
+	log.Println("Server running on port " + port)
 
-	router.Run(":" + cfg.Port)
+	router.Run(":" + port)
 }

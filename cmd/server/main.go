@@ -11,10 +11,18 @@ import (
 	"github.com/PetJs/blog-backend/pkg/database"
 	"github.com/gin-contrib/cors"
 
+	"github.com/joho/godotenv"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main(){
+
+	err := godotenv.Load()
+    if err != nil {
+        log.Println("⚠️ No .env file found, relying on environment variables")
+    }
+	
 	cfg := config.LoadConfig()
 	
 	

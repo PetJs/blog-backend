@@ -18,7 +18,7 @@ func main(){
 	cfg := config.LoadConfig()
 	
 	
-	db := database.ConnectDB(cfg.DB_URL)
+	db := database.ConnectDB()
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 

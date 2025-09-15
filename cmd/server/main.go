@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"log"
 	"time"
 
@@ -22,7 +23,7 @@ func main(){
     if err != nil {
         log.Println("⚠️ No .env file found, relying on environment variables")
     }
-	
+
 	cfg := config.LoadConfig()
 	
 	
@@ -49,6 +50,10 @@ func main(){
 	api.RegisterPostRoutes(router, service)
 	api.RegisterUserRoutes(router, userService)
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = cfg.Port // fallback for local dev
+	}
 	log.Println("Server running on port " + cfg.Port)
 
 	router.Run(":" + cfg.Port)

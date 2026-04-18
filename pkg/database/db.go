@@ -15,7 +15,7 @@ import (
 var DB *gorm.DB
 
 func ConnectDB() *gorm.DB {
-	rawDSN := os.Getenv("DB_URL") // set this in your env or Render dashboard
+	rawDSN := os.Getenv("DB_URL")
 	if rawDSN == "" {
 		log.Fatal("❌ DB_URL environment variable not set")
 	}
@@ -44,17 +44,14 @@ func ConnectDB() *gorm.DB {
 	hostPort := hostParts[0]
 	dbname := hostParts[1]
 
-	// Final GORM DSN
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, pass, hostPort, dbname)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true", user, pass, hostPort, dbname)
 
-	// Connect
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("❌ Failed to connect to database:", err)
 	}
 
-	// Auto migrate
-	if err := db.AutoMigrate(&models.Post{}, &models.User{}); err != nil {
+	if err := db.AutoMigrate(&models.Post{}, &models.Admin{}); err != nil {
 		log.Fatal("❌ Migration failed:", err)
 	}
 

@@ -1,99 +1,99 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/PetJs/blog-backend/internal/middleware"
 	"github.com/PetJs/blog-backend/internal/models"
 	"github.com/PetJs/blog-backend/internal/services"
 	"github.com/gin-gonic/gin"
-
-	"gorm.io/gorm"
 )
 
-type CreatePostInput struct {
-    Title   string `json:"title" binding:"required"`
-    Content string `json:"content" binding:"required"`
-    ImageURL string `json:"image_url" binding:"required"`
+type PostInput struct {
+	Title    string `json:"title" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+	ImageURL string `json:"image_url"`
 }
 
-
-
-func RegisterPostRoutes(router *gin.Engine, service *services.PostService){
-	router.GET("/posts", func(c *gin.Context){
+func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
+	// Public
+	router.GET("/posts", func(c *gin.Context) {
 		posts, err := service.GetPosts()
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.IndentedJSON(http.StatusOK, posts)
+		c.JSON(http.StatusOK, posts)
 	})
 
-	// Protected routes
-	auth := router.Group("/")
-	auth.Use(middleware.AuthMiddleware())
-
-	auth.POST("/posts", func(c *gin.Context){
-		var input CreatePostInput
-		if err := c.ShouldBindJSON(&input); err != nil {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	router.GET("/posts/:id", func(c *gin.Context) {
+		post, err := service.GetPost(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return
 		}
+		c.JSON(http.StatusOK, post)
+	})
 
-		//Get user_id from context set by AuthMiddleware
-		user_id, exists := c.Get("user_id")
-		if !exists {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "User ID not found in context"})
+	// Admin-only
+	admin := router.Group("/")
+	admin.Use(middleware.AuthMiddleware())
+
+	admin.POST("/posts", func(c *gin.Context) {
+		var input PostInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		post := models.Post{
-			Title:   input.Title,
-			Content: input.Content,	
+			Title:    input.Title,
+			Content:  input.Content,
 			ImageURL: input.ImageURL,
-			UserID:  user_id.(uint), 
 		}
 
-
-		createdPost, err := service.CreatePost(post)
-
+		created, err := service.CreatePost(post)
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.IndentedJSON(http.StatusCreated, gin.H{
-			"status": http.StatusCreated,
+
+		c.JSON(http.StatusCreated, gin.H{
 			"message": "Post created successfully",
-			"data": createdPost,
+			"data":    created,
 		})
 	})
 
-	auth.DELETE("/posts/:id", func(c *gin.Context) {
-		user_id, _ := c.Get("user_id")
-		post_id := c.Param("id")
-
-		if err := service.DeletePost(post_id, user_id.(uint)); err != nil {
-			if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own posts"})
+	admin.PUT("/posts/:id", func(c *gin.Context) {
+		var input PostInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+
+		updates := map[string]interface{}{
+			"title":     input.Title,
+			"content":   input.Content,
+			"image_url": input.ImageURL,
 		}
-		c.IndentedJSON(http.StatusOK, gin.H{"message": "Post deleted successfully"})
+
+		updated, err := service.UpdatePost(c.Param("id"), updates)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Post updated successfully",
+			"data":    updated,
+		})
 	})
 
-	// Get posts by the authenticated user
-	auth.GET("/users/posts", func(ctx *gin.Context) {
-		user_id, _ := ctx.Get("user_id")
-		fmt.Printf("This User id is %v\n", user_id)
-
-		posts, err := service.GetUserPosts(user_id.(uint))
-		if err != nil {
-			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	admin.DELETE("/posts/:id", func(c *gin.Context) {
+		if err := service.DeletePost(c.Param("id")); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return
 		}
-		ctx.IndentedJSON(http.StatusOK, posts)
+		c.JSON(http.StatusOK, gin.H{"message": "Post deleted successfully"})
 	})
 }

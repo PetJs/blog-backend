@@ -11,17 +11,14 @@ import (
 	"github.com/PetJs/blog-backend/pkg/config"
 	"github.com/PetJs/blog-backend/pkg/database"
 	"github.com/gin-contrib/cors"
-
 	"github.com/joho/godotenv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("⚠️ No .env file found, relying on environment variables")
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️  No .env file found, relying on environment variables")
 	}
 
 	cfg := config.LoadConfig()
@@ -30,11 +27,22 @@ func main() {
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
-	repo := repository.NewPostRepository(db)
-	service := services.NewPostService(repo)
+	// Admin setup
+	adminRepo := repository.NewAdminRepository(db)
+	adminService := services.NewAdminService(adminRepo)
 
-	userRepo := repository.NewUserRepository(db)
-	userService := services.NewUserService(userRepo)
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	if adminEmail == "" || adminPassword == "" {
+		log.Fatal("❌ ADMIN_EMAIL and ADMIN_PASSWORD must be set")
+	}
+	if err := adminService.SeedAdmin(adminEmail, adminPassword); err != nil {
+		log.Fatal("❌ Failed to seed admin:", err)
+	}
+
+	// Post setup
+	postRepo := repository.NewPostRepository(db)
+	postService := services.NewPostService(postRepo)
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
@@ -45,14 +53,14 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	api.RegisterPostRoutes(router, service)
-	api.RegisterUserRoutes(router, userService)
+
+	api.RegisterAuthRoutes(router, adminService)
+	api.RegisterPostRoutes(router, postService)
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = cfg.Port // fallback for local dev
+		port = cfg.Port
 	}
 	log.Println("Server running on port " + port)
-
 	router.Run(":" + port)
 }

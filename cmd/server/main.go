@@ -27,7 +27,7 @@ func main() {
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
-	// Admin setup
+	// Admin
 	adminRepo := repository.NewAdminRepository(db)
 	adminService := services.NewAdminService(adminRepo)
 
@@ -40,14 +40,17 @@ func main() {
 		log.Fatal("❌ Failed to seed admin:", err)
 	}
 
-	// Post setup
+	// Posts & Blocks
 	postRepo := repository.NewPostRepository(db)
 	postService := services.NewPostService(postRepo)
+
+	blockRepo := repository.NewBlockRepository(db)
+	blockService := services.NewBlockService(blockRepo)
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -56,6 +59,8 @@ func main() {
 
 	api.RegisterAuthRoutes(router, adminService)
 	api.RegisterPostRoutes(router, postService)
+	api.RegisterBlockRoutes(router, blockService)
+	api.RegisterUploadRoutes(router)
 
 	port := os.Getenv("PORT")
 	if port == "" {

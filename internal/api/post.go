@@ -39,7 +39,7 @@ func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
 	admin := router.Group("/")
 	admin.Use(middleware.AuthMiddleware())
 
-	admin.POST("/posts", func(c *gin.Context) {
+	admin.POST("/post", func(c *gin.Context) {
 		var input PostInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -64,7 +64,7 @@ func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
 		})
 	})
 
-	admin.PUT("/posts/:id", func(c *gin.Context) {
+	admin.PUT("/post/:id", func(c *gin.Context) {
 		var input PostInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -89,7 +89,7 @@ func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
 		})
 	})
 
-	admin.DELETE("/posts/:id", func(c *gin.Context) {
+	admin.DELETE("/post/:id", func(c *gin.Context) {
 		if err := service.DeletePost(c.Param("id")); err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return

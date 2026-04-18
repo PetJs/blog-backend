@@ -4,21 +4,16 @@ import (
 	"net/http"
 
 	"github.com/PetJs/blog-backend/internal/middleware"
-	"github.com/PetJs/blog-backend/internal/models"
 	"github.com/PetJs/blog-backend/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
-type PostInput struct {
-	Title    string `json:"title" binding:"required"`
-	Content  string `json:"content" binding:"required"`
-	ImageURL string `json:"image_url"`
-}
+func RegisterPostRoutes(router *gin.Engine, postService *services.PostService) {
+	api := router.Group("/api")
 
-func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
-	// Public
-	router.GET("/posts", func(c *gin.Context) {
-		posts, err := service.GetPosts()
+	// Public routes
+	api.GET("/posts", func(c *gin.Context) {
+		posts, err := postService.GetPublishedPosts()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -26,8 +21,8 @@ func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
 		c.JSON(http.StatusOK, posts)
 	})
 
-	router.GET("/posts/:id", func(c *gin.Context) {
-		post, err := service.GetPost(c.Param("id"))
+	api.GET("/posts/:slug", func(c *gin.Context) {
+		post, err := postService.GetPostBySlug(c.Param("slug"))
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return
@@ -35,62 +30,49 @@ func RegisterPostRoutes(router *gin.Engine, service *services.PostService) {
 		c.JSON(http.StatusOK, post)
 	})
 
-	// Admin-only
-	admin := router.Group("/")
+	// Admin-only routes
+	admin := api.Group("/")
 	admin.Use(middleware.AuthMiddleware())
 
-	admin.POST("/post", func(c *gin.Context) {
-		var input PostInput
-		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		post := models.Post{
-			Title:    input.Title,
-			Content:  input.Content,
-			ImageURL: input.ImageURL,
-		}
-
-		created, err := service.CreatePost(post)
+	admin.POST("/posts", func(c *gin.Context) {
+		post, err := postService.CreatePost()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Post created successfully",
-			"data":    created,
-		})
+		c.JSON(http.StatusCreated, post)
 	})
 
-	admin.PUT("/post/:id", func(c *gin.Context) {
-		var input PostInput
+	admin.PATCH("/posts/:id", func(c *gin.Context) {
+		var input struct {
+			Title      string `json:"title"`
+			Excerpt    string `json:"excerpt"`
+			CoverImage string `json:"cover_image"`
+		}
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		updates := map[string]interface{}{
-			"title":     input.Title,
-			"content":   input.Content,
-			"image_url": input.ImageURL,
-		}
-
-		updated, err := service.UpdatePost(c.Param("id"), updates)
+		post, err := postService.UpdatePost(c.Param("id"), input.Title, input.Excerpt, input.CoverImage)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Post updated successfully",
-			"data":    updated,
-		})
+		c.JSON(http.StatusOK, post)
 	})
 
-	admin.DELETE("/post/:id", func(c *gin.Context) {
-		if err := service.DeletePost(c.Param("id")); err != nil {
+	admin.PATCH("/posts/:id/publish", func(c *gin.Context) {
+		post, err := postService.PublishPost(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, post)
+	})
+
+	admin.DELETE("/posts/:id", func(c *gin.Context) {
+		if err := postService.DeletePost(c.Param("id")); err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return
 		}

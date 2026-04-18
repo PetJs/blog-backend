@@ -27,31 +27,28 @@ func ConnectDB() *gorm.DB {
 		log.Fatal("❌ Invalid DB_URL format")
 	}
 
-	userPass := parts[0]
-	hostDB := parts[1]
-
-	userPassParts := strings.SplitN(userPass, ":", 2)
+	userPassParts := strings.SplitN(parts[0], ":", 2)
 	if len(userPassParts) != 2 {
 		log.Fatal("❌ Invalid user:password in DB_URL")
 	}
-	user := userPassParts[0]
-	pass := userPassParts[1]
 
-	hostParts := strings.SplitN(hostDB, "/", 2)
+	hostParts := strings.SplitN(parts[1], "/", 2)
 	if len(hostParts) != 2 {
 		log.Fatal("❌ Invalid host/dbname in DB_URL")
 	}
-	hostPort := hostParts[0]
-	dbname := hostParts[1]
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true", user, pass, hostPort, dbname)
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true",
+		userPassParts[0], userPassParts[1], hostParts[0], hostParts[1],
+	)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("❌ Failed to connect to database:", err)
 	}
 
-	if err := db.AutoMigrate(&models.Post{}, &models.Admin{}); err != nil {
+	// Post must come before Block so the foreign key resolves correctly
+	if err := db.AutoMigrate(&models.Admin{}, &models.Post{}, &models.Block{}); err != nil {
 		log.Fatal("❌ Migration failed:", err)
 	}
 

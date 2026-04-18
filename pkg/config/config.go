@@ -1,27 +1,31 @@
 package config
 
-import (
-	// "fmt"
-	"os"
-)
+import "os"
 
 type Config struct {
-	Port           string
-	DB_URL         string
-	JWT_SECRET_KEY string
+	Port              string
+	DBURL             string
+	JWTSecretKey      string
+	CloudinaryURL     string
+	OpenAIAPIKey      string
+	ElevenLabsAPIKey  string
+	ElevenLabsVoiceID string
 }
 
 func LoadConfig() Config {
 	return Config{
-		Port:           getEnv("PORT", "8080"),
-		DB_URL:         getEnv("DB_URL", "root:Morowa@tcp(127.0.0.1:3306)/blogdb?charset=utf8mb4&parseTime=True&loc=Local"),
-		JWT_SECRET_KEY: getEnv("JWT_SECRET_KEY", ""),
+		Port:              getEnv("PORT", "8080"),
+		DBURL:             getEnv("DB_URL", ""),
+		JWTSecretKey:      getEnv("JWT_SECRET_KEY", ""),
+		CloudinaryURL:     getEnv("CLOUDINARY_URL", ""),
+		OpenAIAPIKey:      getEnv("OPENAI_API_KEY", ""),
+		ElevenLabsAPIKey:  getEnv("ELEVENLABS_API_KEY", ""),
+		ElevenLabsVoiceID: getEnv("ELEVENLABS_VOICE_ID", ""),
 	}
 }
 
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
-		// fmt.Println("The env variable is: ", value)
 		return value
 	}
 	return fallback

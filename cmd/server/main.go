@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -23,6 +25,19 @@ func main() {
 
 	cfg := config.LoadConfig()
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = cfg.Port
+	}
+
+	// Bind the port immediately so Render sees it open while DB init runs
+	listener, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		log.Fatal("❌ Failed to bind port:", err)
+	}
+	log.Println("✅ Port " + port + " bound, initialising...")
+
+	// DB setup
 	db := database.ConnectDB()
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
@@ -47,6 +62,7 @@ func main() {
 	blockRepo := repository.NewBlockRepository(db)
 	blockService := services.NewBlockService(blockRepo)
 
+	// Router
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -62,10 +78,8 @@ func main() {
 	api.RegisterBlockRoutes(router, blockService)
 	api.RegisterUploadRoutes(router)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = cfg.Port
+	log.Println("🚀 Server ready on port " + port)
+	if err := http.Serve(listener, router); err != nil {
+		log.Fatal("❌ Server error:", err)
 	}
-	log.Println("Server running on port " + port)
-	router.Run(":" + port)
 }

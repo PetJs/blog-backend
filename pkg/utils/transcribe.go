@@ -2,43 +2,89 @@ package utils
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 )
 
-// TranscribeAudio sends an audio file to OpenAI Whisper and returns the transcript.
-func TranscribeAudio(file io.Reader, filename string) (string, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+type geminiRequest struct {
+	Contents []geminiContent `json:"contents"`
+}
+
+type geminiContent struct {
+	Parts []geminiPart `json:"parts"`
+}
+
+type geminiPart struct {
+	Text       string            `json:"text,omitempty"`
+	InlineData *geminiInlineData `json:"inlineData,omitempty"`
+}
+
+type geminiInlineData struct {
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"` // base64-encoded
+}
+
+type geminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
+}
+
+// TranscribeAudio sends an audio file to Gemini 1.5 Flash and returns the transcript.
+func TranscribeAudio(file io.Reader, mimeType string) (string, error) {
+	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		return "", fmt.Errorf("OPENAI_API_KEY must be set")
+		return "", fmt.Errorf("GEMINI_API_KEY must be set")
 	}
 
-	var body bytes.Buffer
-	writer := multipart.NewWriter(&body)
-
-	part, err := writer.CreateFormFile("file", filename)
+	audioBytes, err := io.ReadAll(file)
 	if err != nil {
 		return "", err
 	}
-	if _, err := io.Copy(part, file); err != nil {
-		return "", err
+
+	encoded := base64.StdEncoding.EncodeToString(audioBytes)
+
+	payload := geminiRequest{
+		Contents: []geminiContent{
+			{
+				Parts: []geminiPart{
+					{
+						InlineData: &geminiInlineData{
+							MimeType: mimeType,
+							Data:     encoded,
+						},
+					},
+					{
+						Text: "Transcribe this audio accurately. Return only the transcription text, nothing else.",
+					},
+				},
+			},
+		},
 	}
 
-	if err := writer.WriteField("model", "whisper-1"); err != nil {
-		return "", err
-	}
-	writer.Close()
-
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", &body)
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	url := fmt.Sprintf(
+		"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%s",
+		apiKey,
+	)
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -48,15 +94,17 @@ func TranscribeAudio(file io.Reader, filename string) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		errBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Whisper error %d: %s", resp.StatusCode, string(errBody))
+		return "", fmt.Errorf("Gemini error %d: %s", resp.StatusCode, string(errBody))
 	}
 
-	var result struct {
-		Text string `json:"text"`
-	}
+	var result geminiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", err
 	}
 
-	return result.Text, nil
+	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("empty response from Gemini")
+	}
+
+	return result.Candidates[0].Content.Parts[0].Text, nil
 }

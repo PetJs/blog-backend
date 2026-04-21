@@ -64,7 +64,7 @@ func RegisterUploadRoutes(router *gin.Engine) {
 			return
 		}
 
-		transcript, err := utils.TranscribeAudio(file, header.Filename)
+		transcript, err := utils.TranscribeAudio(file, mimeType)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transcription failed"})
 			return

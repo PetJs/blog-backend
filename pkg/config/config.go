@@ -7,7 +7,7 @@ type Config struct {
 	DBURL             string
 	JWTSecretKey      string
 	CloudinaryURL     string
-	OpenAIAPIKey      string
+	GeminiAPIKey      string
 	ElevenLabsAPIKey  string
 	ElevenLabsVoiceID string
 }
@@ -18,7 +18,7 @@ func LoadConfig() Config {
 		DBURL:             getEnv("DB_URL", ""),
 		JWTSecretKey:      getEnv("JWT_SECRET_KEY", ""),
 		CloudinaryURL:     getEnv("CLOUDINARY_URL", ""),
-		OpenAIAPIKey:      getEnv("OPENAI_API_KEY", ""),
+		GeminiAPIKey:      getEnv("GEMINI_API_KEY", ""),
 		ElevenLabsAPIKey:  getEnv("ELEVENLABS_API_KEY", ""),
 		ElevenLabsVoiceID: getEnv("ELEVENLABS_VOICE_ID", ""),
 	}

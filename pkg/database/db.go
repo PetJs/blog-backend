@@ -8,6 +8,7 @@ import (
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/PetJs/blog-backend/internal/models"
 )
@@ -42,7 +43,9 @@ func ConnectDB() *gorm.DB {
 		userPassParts[0], userPassParts[1], hostParts[0], hostParts[1],
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Error), // only log actual errors
+	})
 	if err != nil {
 		log.Fatal("❌ Failed to connect to database:", err)
 	}

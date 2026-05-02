@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/PetJs/blog-backend/internal/middleware"
@@ -9,14 +10,42 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var extMimeTypes = map[string]string{
+	".mp3":  "audio/mpeg",
+	".m4a":  "audio/mp4",
+	".mp4":  "audio/mp4",
+	".webm": "audio/webm",
+	".ogg":  "audio/ogg",
+	".wav":  "audio/wav",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png":  "image/png",
+	".gif":  "image/gif",
+}
+
+// resolveMimeType returns the declared MIME type, falling back to extension-based detection.
+func resolveMimeType(filename, declared string) string {
+	if declared != "" && declared != "application/octet-stream" {
+		return declared
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	if m, ok := extMimeTypes[ext]; ok {
+		return m
+	}
+	return declared
+}
+
 var allowedMimeTypes = map[string]string{
-	"image/jpeg": "image",
-	"image/png":  "image",
-	"image/gif":  "image",
-	"audio/mpeg": "video",
-	"audio/mp3":  "video",
-	"audio/webm": "video",
-	"audio/ogg":  "video",
+	"image/jpeg":  "image",
+	"image/png":   "image",
+	"image/gif":   "image",
+	"audio/mpeg":  "video",
+	"audio/mp3":   "video",
+	"audio/mp4":   "video", // .m4a files
+	"audio/x-m4a": "video",
+	"audio/webm":  "video",
+	"audio/ogg":   "video",
+	"audio/wav":   "video",
 }
 
 func RegisterUploadRoutes(router *gin.Engine) {
@@ -31,7 +60,7 @@ func RegisterUploadRoutes(router *gin.Engine) {
 		}
 		defer file.Close()
 
-		mimeType := header.Header.Get("Content-Type")
+		mimeType := resolveMimeType(header.Filename, header.Header.Get("Content-Type"))
 		resourceType, allowed := allowedMimeTypes[mimeType]
 		if !allowed {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "File type not allowed"})
@@ -58,7 +87,7 @@ func RegisterUploadRoutes(router *gin.Engine) {
 		}
 		defer file.Close()
 
-		mimeType := header.Header.Get("Content-Type")
+		mimeType := resolveMimeType(header.Filename, header.Header.Get("Content-Type"))
 		if !strings.HasPrefix(mimeType, "audio/") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an audio file"})
 			return

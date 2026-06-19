@@ -50,8 +50,8 @@ func ConnectDB() *gorm.DB {
 		log.Fatal("❌ Failed to connect to database:", err)
 	}
 
-	// Post must come before Block so the foreign key resolves correctly
-	if err := db.AutoMigrate(&models.Admin{}, &models.Post{}, &models.Block{}); err != nil {
+	// Post must come before Block/PostView so foreign keys resolve correctly
+	if err := db.AutoMigrate(&models.Admin{}, &models.Post{}, &models.Block{}, &models.PostView{}); err != nil {
 		log.Fatal("❌ Migration failed:", err)
 	}
 

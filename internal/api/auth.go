@@ -5,11 +5,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/PetJs/blog-backend/internal/middleware"
 	"github.com/PetJs/blog-backend/internal/services"
 	"github.com/PetJs/blog-backend/pkg/utils"
 )
 
 func RegisterAuthRoutes(router *gin.Engine, adminService *services.AdminService) {
+	protected := router.Group("/admin")
+	protected.Use(middleware.AuthMiddleware())
+	protected.GET("/me", func(c *gin.Context) {
+		userID := c.GetUint("user_id")
+		admin, err := adminService.GetAdminByID(userID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Admin not found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"id": admin.ID, "email": admin.Email, "created_at": admin.CreatedAt})
+	})
+
 	router.POST("/admin/login", func(c *gin.Context) {
 		var req struct {
 			Email    string `json:"email" binding:"required,email"`

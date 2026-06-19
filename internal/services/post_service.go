@@ -32,6 +32,10 @@ func (s *PostService) GetPublishedPosts() ([]models.Post, error) {
 	return s.Repo.GetAllPublishedPosts()
 }
 
+func (s *PostService) GetAllPosts() ([]models.Post, error) {
+	return s.Repo.GetAllPosts()
+}
+
 func (s *PostService) GetPostBySlug(slug string) (*models.Post, error) {
 	return s.Repo.GetPostBySlug(slug)
 }

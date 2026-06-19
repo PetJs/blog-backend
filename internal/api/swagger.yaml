@@ -174,6 +174,23 @@ paths:
 
   # ─── Posts (public) ──────────────────────────────────────────────────────────
 
+  /api/admin/posts:
+    get:
+      tags: [Posts]
+      summary: List all posts (admin)
+      description: Returns every post regardless of status (draft + published), ordered by most recently updated. Use this to populate the admin dashboard. Blocks are not included.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: All posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Post' }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Server error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
   /api/posts:
     get:
       tags: [Posts]

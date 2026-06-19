@@ -34,6 +34,15 @@ func RegisterPostRoutes(router *gin.Engine, postService *services.PostService) {
 	admin := api.Group("/")
 	admin.Use(middleware.AuthMiddleware())
 
+	admin.GET("/admin/posts", func(c *gin.Context) {
+		posts, err := postService.GetAllPosts()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, posts)
+	})
+
 	admin.POST("/posts", func(c *gin.Context) {
 		post, err := postService.CreatePost()
 		if err != nil {

@@ -29,6 +29,14 @@ func (r *PostRepository) GetAllPublishedPosts() ([]models.Post, error) {
 	return posts, nil
 }
 
+func (r *PostRepository) GetAllPosts() ([]models.Post, error) {
+	var posts []models.Post
+	if err := r.DB.Order("updated_at DESC").Find(&posts).Error; err != nil {
+		return nil, err
+	}
+	return posts, nil
+}
+
 func (r *PostRepository) GetPostBySlug(slug string) (*models.Post, error) {
 	var post models.Post
 	if err := r.DB.Preload("Blocks", func(db *gorm.DB) *gorm.DB {

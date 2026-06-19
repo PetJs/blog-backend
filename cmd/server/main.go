@@ -82,6 +82,7 @@ func main() {
 	api.RegisterBlockRoutes(router, blockService)
 	api.RegisterUploadRoutes(router)
 	api.RegisterAnalyticsRoutes(router, analyticsService)
+	api.RegisterDocsRoutes(router)
 
 	log.Println("🚀 Server ready on port " + port)
 	if err := http.Serve(listener, router); err != nil {

@@ -1,0 +1,490 @@
+openapi: 3.0.3
+info:
+  title: Blog API
+  description: |
+    REST API for the brutalist blog CMS.
+
+    **Block `content` encoding by type:**
+    | type | content value |
+    |------|--------------|
+    | `text` | plain string |
+    | `blockquote` | plain string |
+    | `image` | JSON string: `{"src":"url","caption":"text"}` |
+    | `audio` | JSON string: `{"label":"FILENAME.WAV","caption":"text"}` — also set `original_audio_url` |
+    | `gallery` | JSON string: `[{"src":"url","alt":"text"},...]` |
+    | `list` | JSON string: `["item 1","item 2","item 3"]` |
+  version: 1.0.0
+
+servers:
+  - url: /
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Obtain a token from POST /admin/login and pass it as: Authorization: Bearer <token>"
+
+  schemas:
+    Block:
+      type: object
+      properties:
+        id:          { type: integer, example: 1 }
+        post_id:     { type: integer, example: 3 }
+        type:
+          type: string
+          enum: [text, image, audio, gallery, list, blockquote]
+          example: text
+        content:
+          type: string
+          description: "Plain string for text/blockquote. JSON-encoded string for all other types."
+          example: "The internet was supposed to be a permanent archive..."
+        original_audio_url:
+          type: string
+          description: "Cloudinary URL — only present on audio blocks."
+          example: "https://res.cloudinary.com/demo/video/upload/sample.mp3"
+        position:    { type: integer, example: 0 }
+        created_at:  { type: string, format: date-time }
+        updated_at:  { type: string, format: date-time }
+
+    Post:
+      type: object
+      properties:
+        id:          { type: integer, example: 1 }
+        title:       { type: string, example: "ARCHITECTURAL VOID AND DIGITAL EPHEMERALITY" }
+        slug:        { type: string, example: "architectural-void-and-digital-ephemerality" }
+        excerpt:     { type: string, example: "Exploring the intersection of brutalist physical structures..." }
+        cover_image: { type: string, example: "https://res.cloudinary.com/demo/image/upload/sample.jpg" }
+        status:
+          type: string
+          enum: [draft, published]
+          example: published
+        elevenlabs_audio_url:
+          type: string
+          example: "https://api.elevenlabs.io/..."
+        blocks:
+          type: array
+          items: { $ref: '#/components/schemas/Block' }
+        created_at:  { type: string, format: date-time }
+        updated_at:  { type: string, format: date-time }
+
+    DashboardStats:
+      type: object
+      properties:
+        posts:
+          type: object
+          properties:
+            total:     { type: integer, example: 10 }
+            published: { type: integer, example: 7 }
+            draft:     { type: integer, example: 3 }
+        blocks_by_type:
+          type: array
+          items:
+            type: object
+            properties:
+              type:  { type: string, example: text }
+              count: { type: integer, example: 20 }
+        views:
+          type: object
+          properties:
+            total:        { type: integer, example: 1234 }
+            last_7_days:  { type: integer, example: 89 }
+            last_30_days: { type: integer, example: 456 }
+        top_posts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:         { type: integer, example: 1 }
+              title:      { type: string, example: "ARCHITECTURAL VOID" }
+              slug:       { type: string, example: "architectural-void" }
+              view_count: { type: integer, example: 234 }
+
+    Error:
+      type: object
+      properties:
+        error: { type: string, example: "Invalid email or password" }
+
+    Message:
+      type: object
+      properties:
+        message: { type: string, example: "Deleted successfully" }
+
+tags:
+  - name: Auth
+    description: Login and token verification
+  - name: Posts
+    description: Public post listing and admin CRUD
+  - name: Blocks
+    description: Content blocks within a post
+  - name: Upload
+    description: File uploads and audio transcription
+  - name: Analytics
+    description: View tracking and dashboard stats
+
+paths:
+  # ─── Auth ────────────────────────────────────────────────────────────────────
+
+  /admin/login:
+    post:
+      tags: [Auth]
+      summary: Admin login
+      description: Returns a JWT valid for 24 hours.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email, example: admin@example.com }
+                password: { type: string, example: "supersecret" }
+      responses:
+        '200':
+          description: JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, example: "eyJhbGciOiJIUzI1NiIs..." }
+        '400': { description: Validation error,      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Invalid credentials,   content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /admin/me:
+    get:
+      tags: [Auth]
+      summary: Get current admin info
+      description: Validates the token and returns the admin's profile. Use this on page load to verify an existing token.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Admin profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:         { type: integer, example: 1 }
+                  email:      { type: string, example: admin@example.com }
+                  created_at: { type: string, format: date-time }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ─── Posts (public) ──────────────────────────────────────────────────────────
+
+  /api/posts:
+    get:
+      tags: [Posts]
+      summary: List published posts
+      description: Returns all published posts ordered by newest first. Blocks are not included in this response.
+      responses:
+        '200':
+          description: Array of published posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Post' }
+        '500': { description: Server error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+    post:
+      tags: [Posts]
+      summary: Create a new draft post
+      description: Creates an empty draft post and returns it. Call PATCH /api/posts/{id} to set the title and metadata.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Newly created draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Post' }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Server error,  content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/posts/{slug}:
+    get:
+      tags: [Posts]
+      summary: Get a post by slug
+      description: Returns the post with all its blocks ordered by `position` ascending.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, example: "architectural-void-and-digital-ephemerality" }
+      responses:
+        '200':
+          description: Post with ordered blocks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Post' }
+        '404': { description: Not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/posts/{id}:
+    patch:
+      tags: [Posts]
+      summary: Update post metadata
+      description: Update any combination of title, excerpt (subtitle), and cover image URL.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:       { type: string, example: "ARCHITECTURAL VOID" }
+                excerpt:     { type: string, example: "Exploring brutalism and the web." }
+                cover_image: { type: string, example: "https://res.cloudinary.com/demo/image/upload/sample.jpg" }
+      responses:
+        '200': { description: Updated post, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '400': { description: Validation error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Unauthorized,     content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Not found,        content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+    delete:
+      tags: [Posts]
+      summary: Delete a post
+      description: Permanently deletes the post and all its blocks (cascade).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        '200': { description: Deleted,      content: { application/json: { schema: { $ref: '#/components/schemas/Message' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Not found,    content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/posts/{id}/publish:
+    patch:
+      tags: [Posts]
+      summary: Publish a draft post
+      description: Sets status to `published`. The post immediately appears in GET /api/posts.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        '200': { description: Published post, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '401': { description: Unauthorized,   content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Server error,   content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ─── Blocks ──────────────────────────────────────────────────────────────────
+
+  /api/posts/{id}/blocks:
+    post:
+      tags: [Blocks]
+      summary: Add a block to a post
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [text, image, audio, gallery, list, blockquote]
+                  example: text
+                content:
+                  type: string
+                  example: "The internet was supposed to be a permanent archive..."
+                original_audio_url:
+                  type: string
+                  description: Required when type is `audio`.
+                  example: "https://res.cloudinary.com/demo/video/upload/sample.mp3"
+                position:
+                  type: integer
+                  example: 2
+            examples:
+              text:
+                summary: Text paragraph
+                value: { type: text, content: "The internet was supposed to be a permanent archive...", position: 0 }
+              image:
+                summary: Image block
+                value: { type: image, content: '{"src":"https://res.cloudinary.com/demo/image/upload/sample.jpg","caption":"FIG 01: BRUTALIST ARTIFACT."}', position: 1 }
+              audio:
+                summary: Audio block
+                value: { type: audio, content: '{"label":"VOICE_LOG_042.WAV","caption":"Field recording from Berlin server rooms."}', original_audio_url: "https://res.cloudinary.com/demo/video/upload/sample.mp3", position: 2 }
+              list:
+                summary: List block
+                value: { type: list, content: '["We must reject the fluid for the fixed.","We must embrace the border as a boundary."]', position: 3 }
+              blockquote:
+                summary: Blockquote
+                value: { type: blockquote, content: '"The most permanent thing we can build is a simple text file."', position: 4 }
+              gallery:
+                summary: Gallery block
+                value: { type: gallery, content: '[{"src":"https://res.cloudinary.com/demo/image/upload/a.jpg","alt":"circuit board"},{"src":"https://res.cloudinary.com/demo/image/upload/b.jpg","alt":"tower"}]', position: 5 }
+      responses:
+        '201': { description: Created block, content: { application/json: { schema: { $ref: '#/components/schemas/Block' } } } }
+        '400': { description: Validation error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Unauthorized,     content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Server error,     content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/blocks/{id}:
+    patch:
+      tags: [Blocks]
+      summary: Update a block
+      description: Update the content and/or position of an existing block.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 5 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:  { type: string }
+                position: { type: integer }
+      responses:
+        '200': { description: Updated block, content: { application/json: { schema: { $ref: '#/components/schemas/Block' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Not found,    content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+    delete:
+      tags: [Blocks]
+      summary: Delete a block
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 5 }
+      responses:
+        '200': { description: Deleted,      content: { application/json: { schema: { $ref: '#/components/schemas/Message' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Not found,    content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ─── Upload ──────────────────────────────────────────────────────────────────
+
+  /api/upload:
+    post:
+      tags: [Upload]
+      summary: Upload an image or audio file
+      description: |
+        Uploads a file to Cloudinary and returns the URL.
+        Use the returned URL as the `cover_image` in PATCH /api/posts/{id}, or as the `src` inside a block's `content` JSON.
+
+        **Accepted MIME types:** image/jpeg, image/png, image/gif, audio/mpeg, audio/mp4 (.m4a), audio/webm, audio/ogg, audio/wav
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Cloudinary URL and detected MIME type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:  { type: string, example: "https://res.cloudinary.com/demo/image/upload/sample.jpg" }
+                  type: { type: string, example: "image/jpeg" }
+        '400': { description: No file or unsupported type, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Unauthorized,                 content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Upload failed,                content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/transcribe:
+    post:
+      tags: [Upload]
+      summary: Transcribe an audio file
+      description: Sends an audio file to the Gemini API and returns a transcript. Use the transcript as the `caption` inside an audio block's `content` JSON.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Audio files only (mp3, m4a, wav, webm, ogg)
+      responses:
+        '200':
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transcript: { type: string, example: "Welcome to the Berlin server room field recordings..." }
+        '400': { description: Not an audio file, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Unauthorized,      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Transcription failed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ─── Analytics ───────────────────────────────────────────────────────────────
+
+  /api/posts/{slug}/view:
+    post:
+      tags: [Analytics]
+      summary: Record a post view
+      description: Call this from the frontend whenever a reader opens a post page. No authentication required.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, example: "architectural-void-and-digital-ephemerality" }
+      responses:
+        '200': { description: View recorded, content: { application/json: { schema: { $ref: '#/components/schemas/Message' } } } }
+        '404': { description: Post not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/admin/analytics:
+    get:
+      tags: [Analytics]
+      summary: Get admin dashboard stats
+      description: Returns post counts by status, block counts by type, view totals, and the top 5 most-viewed posts.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardStats' }
+              example:
+                posts:
+                  total: 10
+                  published: 7
+                  draft: 3
+                blocks_by_type:
+                  - { type: text, count: 20 }
+                  - { type: image, count: 8 }
+                  - { type: audio, count: 4 }
+                views:
+                  total: 1234
+                  last_7_days: 89
+                  last_30_days: 456
+                top_posts:
+                  - { id: 1, title: "ARCHITECTURAL VOID", slug: "architectural-void", view_count: 234 }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { description: Server error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

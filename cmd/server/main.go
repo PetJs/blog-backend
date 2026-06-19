@@ -62,6 +62,10 @@ func main() {
 	blockRepo := repository.NewBlockRepository(db)
 	blockService := services.NewBlockService(blockRepo)
 
+	// Analytics
+	analyticsRepo := repository.NewAnalyticsRepository(db)
+	analyticsService := services.NewAnalyticsService(analyticsRepo, postRepo)
+
 	// Router
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
@@ -77,6 +81,7 @@ func main() {
 	api.RegisterPostRoutes(router, postService)
 	api.RegisterBlockRoutes(router, blockService)
 	api.RegisterUploadRoutes(router)
+	api.RegisterAnalyticsRoutes(router, analyticsService)
 
 	log.Println("🚀 Server ready on port " + port)
 	if err := http.Serve(listener, router); err != nil {

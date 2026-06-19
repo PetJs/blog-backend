@@ -445,15 +445,16 @@ paths:
 
   # ─── Analytics ───────────────────────────────────────────────────────────────
 
-  /api/posts/{slug}/view:
+  /api/posts/{id}/view:
     post:
       tags: [Analytics]
       summary: Record a post view
-      description: Call this from the frontend whenever a reader opens a post page. No authentication required.
+      description: Call this from the frontend whenever a reader opens a post page. Pass the post slug as `{id}`. No authentication required.
       parameters:
-        - name: slug
+        - name: id
           in: path
           required: true
+          description: The post slug
           schema: { type: string, example: "architectural-void-and-digital-ephemerality" }
       responses:
         '200': { description: View recorded, content: { application/json: { schema: { $ref: '#/components/schemas/Message' } } } }

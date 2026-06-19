@@ -10,8 +10,9 @@ import (
 
 func RegisterAnalyticsRoutes(router *gin.Engine, analyticsService *services.AnalyticsService) {
 	// Public: record a view when a post is opened
-	router.POST("/api/posts/:slug/view", func(c *gin.Context) {
-		slug := c.Param("slug")
+	// Uses :id param name to match the existing POST tree wildcard from block routes
+	router.POST("/api/posts/:id/view", func(c *gin.Context) {
+		slug := c.Param("id")
 		if err := analyticsService.RecordView(slug); err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return

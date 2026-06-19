@@ -25,3 +25,11 @@ func (r *AdminRepository) GetAdminByEmail(email string) (*models.Admin, error) {
 	}
 	return &admin, nil
 }
+
+func (r *AdminRepository) GetAdminByID(id uint) (*models.Admin, error) {
+	var admin models.Admin
+	if err := r.DB.First(&admin, id).Error; err != nil {
+		return nil, err
+	}
+	return &admin, nil
+}

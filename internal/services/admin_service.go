@@ -17,6 +17,10 @@ func NewAdminService(repo *repository.AdminRepository) *AdminService {
 	return &AdminService{Repo: repo}
 }
 
+func (s *AdminService) GetAdminByID(id uint) (*models.Admin, error) {
+	return s.Repo.GetAdminByID(id)
+}
+
 func (s *AdminService) LoginAdmin(email, password string) (*models.Admin, error) {
 	admin, err := s.Repo.GetAdminByEmail(email)
 	if err != nil {

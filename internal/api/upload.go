@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -69,7 +70,8 @@ func RegisterUploadRoutes(router *gin.Engine) {
 
 		url, err := utils.UploadFile(file, resourceType)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload failed"})
+			log.Printf("❌ Upload error (mime=%s resource=%s): %v", mimeType, resourceType, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload failed: " + err.Error()})
 			return
 		}
 
@@ -95,7 +97,8 @@ func RegisterUploadRoutes(router *gin.Engine) {
 
 		transcript, err := utils.TranscribeAudio(file, mimeType)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transcription failed"})
+			log.Printf("❌ Transcription error (mime=%s): %v", mimeType, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transcription failed: " + err.Error()})
 			return
 		}
 

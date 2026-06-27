@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -70,10 +71,19 @@ func (s *PostService) PublishPost(id string) (*models.Post, error) {
 
 	var fullText strings.Builder
 	for _, block := range post.Blocks {
-		if block.Type == "text" || block.Type == "audio" {
+		switch block.Type {
+		case "text", "blockquote":
 			text := utils.StripHTML(block.Content)
 			if text != "" {
 				fullText.WriteString(text + " ")
+			}
+		case "audio":
+			// content is JSON: {"label":"...","caption":"<transcript>"}
+			var audioContent struct {
+				Caption string `json:"caption"`
+			}
+			if err := json.Unmarshal([]byte(block.Content), &audioContent); err == nil && audioContent.Caption != "" {
+				fullText.WriteString(audioContent.Caption + " ")
 			}
 		}
 	}

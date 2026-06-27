@@ -24,10 +24,13 @@ type elevenLabsVoice struct {
 // to Cloudinary, and returns the Cloudinary URL.
 func GenerateElevenLabsAudio(text string) (string, error) {
 	apiKey := os.Getenv("ELEVENLABS_API_KEY")
-	voiceID := os.Getenv("ELEVENLABS_VOICE_ID")
+	if apiKey == "" {
+		return "", fmt.Errorf("ELEVENLABS_API_KEY is not set")
+	}
 
-	if apiKey == "" || voiceID == "" {
-		return "", fmt.Errorf("ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID must be set")
+	voiceID := os.Getenv("ELEVENLABS_VOICE_ID")
+	if voiceID == "" {
+		voiceID = "21m00Tcm4TlvDq8ikWAM" // Rachel — free-tier default
 	}
 
 	payload := elevenLabsRequest{

@@ -92,8 +92,8 @@ func (s *PostService) PublishPost(id string) (*models.Post, error) {
 	}
 
 	updated, err := s.Repo.UpdatePost(id, map[string]interface{}{
-		"status":               "published",
-		"elevenlabs_audio_url": audioURL,
+		"status":                "published",
+		"eleven_labs_audio_url": audioURL,
 	})
 	if err != nil {
 		return nil, err

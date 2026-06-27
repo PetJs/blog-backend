@@ -32,7 +32,7 @@ func GenerateElevenLabsAudio(text string) (string, error) {
 
 	payload := elevenLabsRequest{
 		Text:    text,
-		ModelID: "eleven_monolingual_v1",
+		ModelID: "eleven_multilingual_v2",
 		VoiceSettings: elevenLabsVoice{
 			Stability:       0.5,
 			SimilarityBoost: 0.75,

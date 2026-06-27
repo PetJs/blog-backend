@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/PetJs/blog-backend/internal/middleware"
@@ -74,6 +75,7 @@ func RegisterPostRoutes(router *gin.Engine, postService *services.PostService) {
 	admin.PATCH("/posts/:id/publish", func(c *gin.Context) {
 		post, err := postService.PublishPost(c.Param("id"))
 		if err != nil {
+			log.Printf("❌ Publish failed for post %s: %v", c.Param("id"), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

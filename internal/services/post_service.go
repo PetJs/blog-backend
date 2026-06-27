@@ -71,7 +71,6 @@ func (s *PostService) PublishPost(id string) (*models.Post, error) {
 	var fullText strings.Builder
 	for _, block := range post.Blocks {
 		if block.Type == "text" || block.Type == "audio" {
-			// Strip HTML tags from text blocks before sending to ElevenLabs
 			text := utils.StripHTML(block.Content)
 			if text != "" {
 				fullText.WriteString(text + " ")
@@ -79,9 +78,17 @@ func (s *PostService) PublishPost(id string) (*models.Post, error) {
 		}
 	}
 
-	audioURL, err := utils.GenerateElevenLabsAudio(strings.TrimSpace(fullText.String()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate audio: %w", err)
+	// ElevenLabs is best-effort — a missing key, empty post, or API error
+	// must never prevent publishing.
+	var audioURL string
+	trimmed := strings.TrimSpace(fullText.String())
+	if trimmed != "" {
+		url, elevenErr := utils.GenerateElevenLabsAudio(trimmed)
+		if elevenErr != nil {
+			fmt.Printf("⚠️  ElevenLabs skipped for post %s: %v\n", id, elevenErr)
+		} else {
+			audioURL = url
+		}
 	}
 
 	updated, err := s.Repo.UpdatePost(id, map[string]interface{}{
